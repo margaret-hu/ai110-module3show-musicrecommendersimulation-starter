@@ -9,8 +9,10 @@ You will implement the functions in recommender.py:
 - recommend_songs
 """
 
-from recommender import load_songs, recommend_songs
-
+try:
+    from .recommender import load_songs, recommend_songs
+except ImportError:
+    from recommender import load_songs, recommend_songs
 
 def main() -> None:
     songs = load_songs("data/songs.csv") 
