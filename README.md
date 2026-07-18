@@ -17,17 +17,78 @@ Replace this paragraph with your own summary of what your version does.
 
 ## How The System Works
 
-Explain your design in plain language.
+Each `Song` carries five core numeric features — `energy`, `tempo_bpm`, `valence`, `danceability`, and `acousticness` — plus `genre` and `mood` tags used for categorical matching.
 
-Some prompts to answer:
+Each `UserProfile` stores a listener's taste as `favorite_genre`, `favorite_mood`, a `target_energy` value, and a `likes_acoustic` flag.
 
-- What features does each `Song` use in your system
-  - For example: genre, mood, energy, tempo
-- What information does your `UserProfile` store
-- How does your `Recommender` compute a score for each song
-- How do you choose which songs to recommend
+The `Recommender` scores every song against a user profile with a weighted rule:
 
-You can include a simple diagram or bullet list if helpful.
+- **Genre match**: a bonus if the song's `genre` equals the user's `favorite_genre`.
+- **Mood match**: a bonus if the song's `mood` equals the user's `favorite_mood`.
+- **Energy fit**: the closer the song's `energy` is to the user's `target_energy`, the higher the score (distance-based penalty).
+- **Acousticness fit**: rewards high `acousticness` when `likes_acoustic` is true, and low `acousticness` otherwise.
+- **Other features** (`valence`, `danceability`, `tempo_bpm`): smaller weighted contributions that nudge the score without dominating it.
+
+Each weighted component also produces a short piece of text (e.g. `"matches favorite genre"`, `"energy close to target"`), which are joined into the explanation returned by `explain_recommendation`.
+
+To choose recommendations, the system scores every song in the catalog this way, sorts all songs by total score in descending order, and returns the top `k`.
+
+**Class structure:**
+
+```mermaid
+classDiagram
+    class Song {
+        +int id
+        +str title
+        +str artist
+        +str genre
+        +str mood
+        +float energy
+        +float tempo_bpm
+        +float valence
+        +float danceability
+        +float acousticness
+    }
+
+    class UserProfile {
+        +str favorite_genre
+        +str favorite_mood
+        +float target_energy
+        +bool likes_acoustic
+    }
+
+    class Recommender {
+        +List~Song~ songs
+        +recommend(user: UserProfile, k: int) List~Song~
+        +explain_recommendation(user: UserProfile, song: Song) str
+    }
+
+    class ScoreSongFn {
+        <<function>>
+        +score_song(user_prefs: Dict, song: Dict) Tuple~float, List~str~~
+    }
+
+    Recommender "1" o-- "*" Song : holds
+    Recommender ..> UserProfile : scores against
+    Recommender ..> ScoreSongFn : delegates scoring
+```
+
+**Scoring and recommendation flow:**
+
+```mermaid
+flowchart TD
+    A["recommend(user, songs, k)"] --> B["For each song in catalog"]
+    B --> C["score_song(user, song)"]
+    C --> D["Compare song features vs user prefs\n(genre, mood, energy, valence,\ntempo_bpm, danceability, acousticness)"]
+    D --> E["Apply weights per feature\n(genre, mood, energy, acousticness, ...)"]
+    E --> F["Sum weighted scores → total score"]
+    F --> G["Generate short explanation string"]
+    G --> H["Collect (song, score, explanation)"]
+    H --> I{"More songs?"}
+    I -- yes --> B
+    I -- no --> J["Sort all songs by score, descending"]
+    J --> K["Return top k recommendations"]
+```
 
 ---
 
