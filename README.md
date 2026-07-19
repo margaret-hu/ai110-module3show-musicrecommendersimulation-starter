@@ -26,8 +26,9 @@ The `Recommender` scores every song against a user profile with a weighted rule:
 - **Genre match**: a bonus if the song's `genre` equals the user's `favorite_genre`.
 - **Mood match**: a bonus if the song's `mood` equals the user's `favorite_mood`.
 - **Energy fit**: the closer the song's `energy` is to the user's `target_energy`, the higher the score (distance-based penalty).
-- **Acousticness fit**: rewards high `acousticness` when `likes_acoustic` is true, and low `acousticness` otherwise.
-- **Other features** (`valence`, `danceability`, `tempo_bpm`): smaller weighted contributions that nudge the score without dominating it.
+- **Acousticness fit**: a flat bonus when the song's `acousticness` crosses a threshold in the direction the user prefers — high `acousticness` if `likes_acoustic` is true, low `acousticness` otherwise.
+
+`valence`, `danceability`, and `tempo_bpm` are carried on every `Song` but are not currently read by the scoring rule.
 
 Each weighted component also produces a short piece of text (e.g. `"matches favorite genre"`, `"energy close to target"`), which are joined into the explanation returned by `explain_recommendation`.
 
@@ -79,8 +80,8 @@ classDiagram
 flowchart TD
     A["recommend(user, songs, k)"] --> B["For each song in catalog"]
     B --> C["score_song(user, song)"]
-    C --> D["Compare song features vs user prefs\n(genre, mood, energy, valence,\ntempo_bpm, danceability, acousticness)"]
-    D --> E["Apply weights per feature\n(genre, mood, energy, acousticness, ...)"]
+    C --> D["Compare song features vs user prefs\n(genre, mood, energy, acousticness)"]
+    D --> E["Apply weights per feature\n(genre, mood, energy, acousticness)"]
     E --> F["Sum weighted scores → total score"]
     F --> G["Generate short explanation string"]
     G --> H["Collect (song, score, explanation)"]
