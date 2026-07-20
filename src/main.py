@@ -25,6 +25,11 @@ USER_PROFILES = [
     {"name": "Euphoric EDM", "prefs": {"genre": "EDM", "mood": "euphoric", "energy": 0.9, "likes_acoustic": False}},
     {"name": "Playful Reggae", "prefs": {"genre": "reggae", "mood": "playful", "energy": 0.65, "likes_acoustic": True}},
     {"name": "Sad Acoustic Folk", "prefs": {"genre": "folk", "mood": "sad", "energy": 0.3, "likes_acoustic": True}},
+
+    # Edge cases: internally contradictory or out-of-distribution prefs, to probe scoring robustness.
+    {"name": "Contradictory Chill Rager", "prefs": {"genre": "metal", "mood": "chill", "energy": 0.95, "likes_acoustic": True}},
+    {"name": "Extreme Zero Energy Euphoria", "prefs": {"genre": "ambient", "mood": "euphoric", "energy": 0.0, "likes_acoustic": False}},
+    {"name": "Nonexistent Genre Ghost", "prefs": {"genre": "vaporwave", "mood": "ecstatic", "energy": 1.0, "likes_acoustic": True}},
 ]
 
 
