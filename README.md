@@ -2,16 +2,11 @@
 
 ## Project Summary
 
-In this project you will build and explain a small music recommender system.
+This project builds a simple music recommender system using a CSV song catalog. The catalog is stored in `data/songs.csv`, which contains song metadata such as title, artist, genre, mood, energy, tempo, valence, danceability, and acousticness. The project does not store the actual music files.
 
-Your goal is to:
+The `load_songs` function in `src/recommender.py` reads the CSV file and converts each row into a dictionary or `Song` object. The recommender then compares each song's features with a user's profile and uses a scoring rule to decide which songs should be recommended.
 
-- Represent songs and a user "taste profile" as data
-- Design a scoring rule that turns that data into recommendations
-- Evaluate what your system gets right and wrong
-- Reflect on how this mirrors real world AI recommenders
-
-Replace this paragraph with your own summary of what your version does.
+To test the scoring rule, `src/main.py` runs it against 13 sample user profiles: 10 realistic taste profiles, plus 3 adversarial edge cases (conflicting preferences, an extreme energy value, and a genre/mood that doesn't exist in the catalog) meant to probe how the scoring holds up under unusual input.
 
 ---
 
@@ -23,10 +18,10 @@ Each `UserProfile` stores a listener's taste as `favorite_genre`, `favorite_mood
 
 The `Recommender` scores every song against a user profile with a weighted rule:
 
-- **Genre match**: a bonus if the song's `genre` equals the user's `favorite_genre`.
-- **Mood match**: a bonus if the song's `mood` equals the user's `favorite_mood`.
-- **Energy fit**: the closer the song's `energy` is to the user's `target_energy`, the higher the score (distance-based penalty).
-- **Acousticness fit**: a flat bonus when the song's `acousticness` crosses a threshold in the direction the user prefers — high `acousticness` if `likes_acoustic` is true, low `acousticness` otherwise.
+- **Genre match**: a `+2.00` bonus if the song's `genre` equals the user's `favorite_genre`.
+- **Mood match**: a `+1.00` bonus if the song's `mood` equals the user's `favorite_mood`.
+- **Energy fit**: up to `+1.50`, scaled by how close the song's `energy` is to the user's `target_energy` (distance-based penalty — the further apart, the fewer points).
+- **Acousticness fit**: a flat `+0.50` bonus when the song's `acousticness` crosses a threshold in the direction the user prefers — high `acousticness` if `likes_acoustic` is true, low `acousticness` otherwise.
 
 `valence`, `danceability`, and `tempo_bpm` are carried on every `Song` but are not currently read by the scoring rule.
 
@@ -130,8 +125,6 @@ You can add more tests in `tests/test_recommender.py`.
 
 ## Sample Recommendation Output
 
-Paste a sample of your recommender's output here as a text block so a reader can see what it produces:
-
 ```
 === High Energy Pop ===
 
@@ -211,13 +204,12 @@ With the mood bonus removed, songs that only matched on mood (with a mediocre en
 
 ## Limitations and Risks
 
-Summarize some limitations of your recommender.
-
-Examples:
-
-- It only works on a tiny catalog
-- It does not understand lyrics or language
-- It might over favor one genre or mood
+- **Tiny catalog (18 songs)**: there isn't enough coverage per genre/mood/energy combination to give any user profile a truly varied top-5 — some queries return near-duplicate songs by the same artist (e.g. `Neon Echo`, `LoRoom` each appear twice) simply because there's nothing else to fill the slot.
+- **No understanding of the actual audio, lyrics, or language** — the model only ever compares metadata tags (`genre`, `mood`) and hand-labeled numeric features (`energy`, `acousticness`). Two songs tagged the same genre could sound nothing alike, and the system has no way to know that.
+- **Genre and energy are correlated in the dataset and both heavily weighted**, so they reinforce each other instead of counterbalancing: high-energy genres (pop, rock, metal, EDM) and low-energy genres (lofi, ambient, jazz, classical) rarely overlap, meaning a user's genre preference and energy preference tend to point at the same narrow slice of the catalog rather than surfacing variety.
+- **No diversity or exploration mechanism** — `recommend()` just sorts by score and slices the top `k`, with no cap on repeated artists/genres and no randomness, so the same profile always gets the same answer and never gets nudged toward something adjacent to its stated taste.
+- **The scoring can't detect contradictory preferences.** As shown in the "Contradictory Chill Rager" experiment (see `model_card.md`), a profile that mixes `favorite_genre="metal"` with `favorite_mood="chill"` still ranks an angry metal track #1, because genre and energy points are summed independently of mood rather than checked for overall coherence.
+- **Mood tags are almost all unique per song** in this catalog, so the mood bonus rarely fires and can't meaningfully counterbalance genre or energy — meaning the system may unintentionally favor whichever axis (genre, then energy) happens to carry the most weight for a given user.
 
 You will go deeper on this in your model card.
 
@@ -225,14 +217,11 @@ You will go deeper on this in your model card.
 
 ## Reflection
 
-Read and complete `model_card.md`:
-
 [**Model Card**](model_card.md)
 
-Write 1 to 2 paragraphs here about what you learned:
+Building this made it clear that a "recommendation" is really just a sorted list of numbers — the system never understands a song, it just adds up points for how well a few tags and features line up with what a profile stated, then hands back whichever rows scored highest. There's no magic in the prediction step: `genre == favorite_genre` is either true or false, `energy` distance is a subtraction, and the four resulting numbers get summed into one score with no weighing of confidence or context. That additive-and-sort structure is powerful because it's transparent and debuggable (you can always point to exactly which rule earned which points), but it also means the system is only ever as good as which features got weighted and by how much — it can't reason about a song, it can only reward the specific similarities someone decided to measure.
 
-- about how recommenders turn data into predictions
-- about where bias or unfairness could show up in systems like this
+That same structure is also where bias creeps in, and testing with adversarial profiles made it obvious rather than theoretical. Because genre (+2.00) and energy (up to +1.50) carry more weight than mood (+1.00), the "Contradictory Chill Rager" test showed the system confidently recommending an angry metal track to someone who asked for "chill" — the scoring had no concept that mood was a hard constraint, only a smaller bonus that lost to genre and energy. The "Nonexistent Genre Ghost" test showed a second, subtler failure mode: when a user's stated genre or mood doesn't exist in the catalog, the system doesn't flag that mismatch, it just silently zeroes out those signals and quietly falls back to ranking by whichever feature is left (energy) — so a user with an unusual or misspelled preference gets a confidently-presented top-5 with no indication that most of their input was ignored. Neither failure required bad data or a bug; both came directly from how the weights were chosen and from treating "no match" the same as "no opinion." That's the bigger lesson for real-world systems: unfairness in a recommender doesn't require intent or a corrupted dataset — it can be baked entirely into which signals get the most points and how confidently the system reports results it's actually unsure about.
 
 
 
