@@ -199,11 +199,13 @@ Reason: Its energy (0.37) closely matches your target (0.30) (+1.40); its acoust
 
 ## Experiments You Tried
 
-Use this section to document the experiments you ran. For example:
+**Experiment 1 — doubled energy weight, halved genre weight** (`GENRE_MATCH_POINTS: 2.0 → 1.0`, `ENERGY_MAX_POINTS: 1.5 → 3.0`, run temporarily then reverted):\
+All scores shifted upward (energy's max contribution is now bigger than genre's), but the more important effect was **reordering**, not just rescaling. Whenever a song had a close energy match but no genre match, it could now leapfrog a song with a genre match but a worse energy fit. For example, in "High Energy Pop" the baseline order was `Sunrise City (genre+mood match) > Gym Hero (genre match) > Sunlit Polaroids (mood match)`; with the new weights it became `Sunrise City > Sunlit Polaroids > Gym Hero` — a pure energy/mood song jumped ahead of a genre-matching song. The same flip showed up in the "Contradictory Chill Rager" edge-case profile: three energy-only matches (no genre or mood match) pushed the mood-matching "Midnight Coding" down from rank 2 to rank 4. This confirms genre match was acting as the dominant tie-breaker before, and energy similarity becomes the dominant signal once its weight exceeds genre's.
 
-- What happened when you changed the weight on genre from 2.0 to 0.5
-- What happened when you added tempo or valence to the score
-- How did your system behave for different types of users
+**Experiment 2 — mood check commented out** (temporarily disabled, then restored):\
+With the mood bonus removed, songs that only matched on mood (with a mediocre energy fit) lost their only source of points and fell out of the top 5 entirely. This was clearest in the "Contradictory Chill Rager" edge case: two "chill"-mood songs (Midnight Coding, Library Rain) that ranked #2 and #3 in the baseline (propped up purely by the mood + acoustic bonuses, since their energy was far from the user's 0.95 target) disappeared from the top 5 once mood stopped contributing, replaced by songs with no thematic connection to the user at all — just a coincidentally close energy value. It also caused minor reordering among near-tied songs even without genre involved (e.g., "Chill Lofi": Midnight Coding and Focus Flow swapped rank 2/3 once mood's flat +1.0 no longer separated them, leaving their slightly different energy fits as the tie-breaker).
+
+**Takeaway:** the ranking is sensitive mostly to whichever signal has the largest point budget relative to the others — genre dominates by default, but energy or mood can each become the deciding factor once weighted competitively. Songs whose *only* redeeming quality is a categorical match (mood or genre) are fragile: they rely entirely on that one bonus to stay in the top-k, and removing or shrinking it can knock them out even though nothing about the song itself changed.
 
 ---
 
